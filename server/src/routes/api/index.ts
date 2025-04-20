@@ -1,10 +1,10 @@
 import { Router } from 'express';
+import weatherRoutes from './weatherRoutes';
+import htmlRoutes from '../htmlRoutes';
+
 const router = Router();
 
-import apiRoutes from './api/index.js';
-import htmlRoutes from './htmlRoutes.js';
-
-router.use('/api', apiRoutes);
-router.use('/', htmlRoutes);
+router.use('/api', weatherRoutes);  // all /api/weather-related routes
+router.use('/', htmlRoutes);        // serve HTML or frontend entry
 
 export default router;
