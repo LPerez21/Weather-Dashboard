@@ -22,25 +22,12 @@ router.post('/', async (req: WeatherRequest, res: Response) => {
     const weatherData = await WeatherService.getWeatherForCity(cityName.trim());
     await HistoryService.addCity(cityName.trim());
     
-    res.json(weatherData);
+    return res.json(weatherData);
   } catch (error) {
     console.error('Weather fetch error:', error);
     const status = error instanceof Error && error.message.includes('not found') ? 404 : 500;
-    res.status(status).json({ 
+    return res.status(status).json({ 
       error: error instanceof Error ? error.message : 'Failed to fetch weather data' 
-    });
-  }
-});
-
-// GET search history
-router.get('/history', async (_req: Request, res: Response) => {
-  try {
-    const cities = await HistoryService.getCities();
-    res.json(cities);
-  } catch (error) {
-    console.error('History fetch error:', error);
-    res.status(500).json({ 
-      error: error instanceof Error ? error.message : 'Failed to fetch history' 
     });
   }
 });
@@ -55,11 +42,11 @@ router.delete('/history/:id', async (req: Request, res: Response) => {
     }
 
     await HistoryService.removeCity(id);
-    res.json({ success: true, message: 'Removed city from search history' });
+    return res.json({ success: true, message: 'Removed city from search history' });
   } catch (error) {
     console.error('History delete error:', error);
     const status = error instanceof Error && error.message.includes('not found') ? 404 : 500;
-    res.status(status).json({ 
+    return res.status(status).json({ 
       error: error instanceof Error ? error.message : 'Failed to delete history item' 
     });
   }
