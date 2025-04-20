@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import weatherRoutes from './weatherRoutes';
-import htmlRoutes from '../htmlRoutes';
+import weatherRoutes from './weatherRoutes.js';
+import htmlRoutes from '../htmlRoutes.js';
 
 const router = Router();
 
