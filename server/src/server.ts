@@ -3,7 +3,7 @@ import express from 'express';
 dotenv.config();
 
 // Import the routes
-import routes from './routes/index.js';
+import routes from './index.js';
 
 const app = express();
 

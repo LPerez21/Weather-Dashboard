@@ -1,67 +1,74 @@
+// src/service/historyService.ts
+
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import { v4 as uuidv4 } from 'uuid';
 
-class City {
+export interface City {
   name: string;
   id: string;
-
-  constructor(name: string, id: string) {
-    this.name = name;
-    this.id = id;
-  }
 }
 
 class HistoryService {
-  private async read() {
-    return await fs.readFile('db/db.json', {
-      flag: 'a+',
-      encoding: 'utf8',
-    });
-  }
+  // Resolve path to your JSON file
+  private readonly filePath = path.join(__dirname, '../db/db.json');
 
-  private async write(cities: City[]) {
-    return await fs.writeFile('db/db.json', JSON.stringify(cities, null, '\t'));
-  }
-
-  async getCities() {
-    return await this.read().then((cities) => {
-      let parsedCities: City[];
-
-      // If cities isn't an array or can't be turned into one, send back a new empty array
-      try {
-        parsedCities = [].concat(JSON.parse(cities));
-      } catch (err) {
-        parsedCities = [];
+  /** Read and parse the JSON file; return empty array if missing or invalid */
+  private async readJson(): Promise<City[]> {
+    try {
+      const data = await fs.readFile(this.filePath, 'utf8');
+      return JSON.parse(data) as City[];
+    } catch (err: any) {
+      if (err.code === 'ENOENT' || err instanceof SyntaxError) {
+        return [];
       }
-
-      return parsedCities;
-    });
+      throw err;
+    }
   }
 
-  async addCity(city: string) {
-    if (!city) {
-      throw new Error('City cannot be blank');
+  /** Stringify and overwrite the JSON file */
+  private async writeJson(cities: City[]): Promise<void> {
+    const json = JSON.stringify(cities, null, 2);
+    await fs.writeFile(this.filePath, json, 'utf8');
+  }
+
+  /**
+   * Get all saved cities.
+   */
+  async getAllCities(): Promise<City[]> {
+    return await this.readJson();
+  }
+
+  /**
+   * Add a new city (if not already present, case‑insensitive).
+   * Returns the new City object (or the existing one if duplicate).
+   */
+  async addCity(name: string): Promise<City> {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      throw new Error('City name cannot be blank');
     }
 
-    // Add a unique id to the city using uuid package
-    const newCity: City = { name: city, id: uuidv4() };
+    const cities = await this.readJson();
+    const existing = cities.find(
+      (c) => c.name.toLowerCase() === trimmed.toLowerCase()
+    );
+    if (existing) {
+      return existing;
+    }
 
-    // Get all cities, add the new city, write all the updated cities, return the newCity
-    return await this.getCities()
-      .then((cities) => {
-        if (cities.find((index) => index.name === city)) {
-          return cities;
-        }
-        return [...cities, newCity];
-      })
-      .then((updatedCities) => this.write(updatedCities))
-      .then(() => newCity);
+    const newCity: City = { name: trimmed, id: uuidv4() };
+    await this.writeJson([...cities, newCity]);
+    return newCity;
   }
 
-  async removeCity(id: string) {
-    return await this.getCities()
-      .then((cities) => cities.filter((city) => city.id !== id))
-      .then((filteredCities) => this.write(filteredCities));
+  /**
+   * Remove a city by its ID.
+   */
+  async removeCity(id: string): Promise<void> {
+    const cities = await this.readJson();
+    const filtered = cities.filter((c) => c.id !== id);
+    await this.writeJson(filtered);
   }
 }
 

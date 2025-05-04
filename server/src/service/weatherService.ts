@@ -45,7 +45,7 @@ export class Weather {
 }
 
 // —– SERVICE —–
-export default class WeatherService {
+export class WeatherService {
   private readonly apiKey: string;
   private readonly baseURL: string;
 
@@ -92,10 +92,10 @@ export default class WeatherService {
     if (!geo.length) throw new Error('City not found');
     const { name, lat, lon } = geo[0];
 
-    // 2️⃣ 5-day forecast (3-hr intervals)
-    const payload = await this.fetchJson<{
-      list: ForecastListItem[];
-    }>(this.buildForecastUrl(lat, lon));
+    // 2️⃣ 5‑day forecast (3‑hr intervals)
+    const payload = await this.fetchJson<{ list: ForecastListItem[] }>(
+      this.buildForecastUrl(lat, lon)
+    );
 
     // 3️⃣ Today’s weather (first entry)
     const now = payload.list[0];
@@ -113,18 +113,22 @@ export default class WeatherService {
     const daily = payload.list
       .filter((item) => item.dt_txt.endsWith('12:00:00'))
       .slice(0, 5)
-      .map((item) =>
-        new Weather(
-          name,
-          dayjs.unix(item.dt).format('M/D/YYYY'),
-          item.main.temp,
-          item.wind.speed,
-          item.main.humidity,
-          item.weather[0].icon,
-          item.weather[0].description || item.weather[0].main
-        )
+      .map(
+        (item) =>
+          new Weather(
+            name,
+            dayjs.unix(item.dt).format('M/D/YYYY'),
+            item.main.temp,
+            item.wind.speed,
+            item.main.humidity,
+            item.weather[0].icon,
+            item.weather[0].description || item.weather[0].main
+          )
       );
 
     return [today, ...daily];
   }
 }
+
+// —– EXPORT INSTANCE —–
+export default new WeatherService();

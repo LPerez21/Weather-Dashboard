@@ -1,14 +1,14 @@
-import { Router, Request, Response } from 'express';
-const router = Router();
+// src/routes/api/weatherRoutes.ts
 
-import HistoryService from '../../service/historyService.js';
-import WeatherService from '../../service/weatherService.js';
+import { Router, Request, Response } from 'express';
+import HistoryService from '../../service/historyService';
+import WeatherService from '../../service/weatherService';
 
 interface WeatherRequest extends Request {
-  body: {
-    cityName: string;
-  };
+  body: { cityName: string };
 }
+
+const router = Router();
 
 /**
  * GET /api/weather/history
@@ -17,67 +17,60 @@ interface WeatherRequest extends Request {
 router.get('/history', async (_req: Request, res: Response) => {
   try {
     const history = await HistoryService.getAllCities();
-    return res.json(history);
-  } catch (error) {
-    console.error('History fetch error:', error);
-    return res.status(500).json({ error: 'Failed to load search history' });
+    res.json(history);
+  } catch (err) {
+    console.error('History fetch error:', err);
+    res.status(500).json({ error: 'Failed to load search history' });
   }
 });
 
 /**
  * POST /api/weather
  * Body: { cityName }
- * — Fetches geocode + forecast, saves the city, then returns:
- *   { weatherData, history }
+ * — Fetches forecast for the city, saves it to history, then returns:
+ *   { weatherData: Weather[], history: City[] }
  */
 router.post('/', async (req: WeatherRequest, res: Response) => {
-  try {
-    const { cityName } = req.body;
-    if (!cityName?.trim()) {
-      return res.status(400).json({ error: 'City name is required' });
-    }
+  const { cityName } = req.body;
+  if (!cityName?.trim()) {
+    return res.status(400).json({ error: 'City name is required' });
+  }
 
-    // 1) Fetch weather payload
+  try {
+    // 1) Fetch weather data
     const weatherData = await WeatherService.getWeatherForCity(cityName.trim());
 
-    // 2) Save to history (id + cityName)
+    // 2) Save city to history
     await HistoryService.addCity(cityName.trim());
 
-    // 3) Return both weather and updated history
+    // 3) Load updated history
     const history = await HistoryService.getAllCities();
-    return res.json({ weatherData, history });
-  } catch (error) {
-    console.error('Weather fetch error:', error);
-    const status =
-      error instanceof Error && error.message.includes('not found') ? 404 : 500;
-    return res
+
+    // 4) Respond with both
+    res.json({ weatherData, history });
+  } catch (err) {
+    console.error('Weather fetch error:', err);
+    const status = err instanceof Error && err.message.includes('not found') ? 404 : 500;
+    res
       .status(status)
-      .json({ error: error instanceof Error ? error.message : 'Failed to fetch weather data' });
+      .json({ error: err instanceof Error ? err.message : 'Failed to fetch weather data' });
   }
 });
 
 /**
  * DELETE /api/weather/history/:id
- * Removes a city from history by its ID.
+ * Removes a city from history by its ID, then returns updated history.
  */
 router.delete('/history/:id', async (req: Request, res: Response) => {
-  try {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ error: 'City ID is required' });
-    }
+  const { id } = req.params;
+  if (!id) {
+    return res.status(400).json({ error: 'City ID is required' });
+  }
 
+  try {
     await HistoryService.removeCity(id);
     const history = await HistoryService.getAllCities();
-    return res.json({ success: true, message: 'Removed city from search history', history });
-  } catch (error) {
-    console.error('History delete error:', error);
-    const status =
-      error instanceof Error && error.message.includes('not found') ? 404 : 500;
-    return res
-      .status(status)
-      .json({ error: error instanceof Error ? error.message : 'Failed to delete history item' });
-  }
-});
-
-export default router;
+    res.json({ success: true, history });
+  } catch (err) {
+    console.error('History delete error:', err);
+    const status = err instanceof Error && err.message.includes('not fou
