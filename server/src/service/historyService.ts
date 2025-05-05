@@ -1,8 +1,12 @@
-// src/service/historyService.ts
+// server/src/service/historyService.ts
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { v4 as uuidv4 } from 'uuid';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
 
 export interface City {
   name: string;
@@ -10,10 +14,9 @@ export interface City {
 }
 
 class HistoryService {
-  // Resolve path to your JSON file
-  private readonly filePath = path.join(__dirname, '../db/db.json');
+  // From dist/service, two levels up lands in server/, then into db/
+  private readonly filePath = path.join(__dirname, '../../db/db.json');
 
-  /** Read and parse the JSON file; return empty array if missing or invalid */
   private async readJson(): Promise<City[]> {
     try {
       const data = await fs.readFile(this.filePath, 'utf8');
@@ -26,45 +29,29 @@ class HistoryService {
     }
   }
 
-  /** Stringify and overwrite the JSON file */
   private async writeJson(cities: City[]): Promise<void> {
-    const json = JSON.stringify(cities, null, 2);
-    await fs.writeFile(this.filePath, json, 'utf8');
+    await fs.writeFile(this.filePath, JSON.stringify(cities, null, 2), 'utf8');
   }
 
-  /**
-   * Get all saved cities.
-   */
   async getAllCities(): Promise<City[]> {
-    return await this.readJson();
+    return this.readJson();
   }
 
-  /**
-   * Add a new city (if not already present, case‑insensitive).
-   * Returns the new City object (or the existing one if duplicate).
-   */
   async addCity(name: string): Promise<City> {
     const trimmed = name.trim();
-    if (!trimmed) {
-      throw new Error('City name cannot be blank');
-    }
+    if (!trimmed) throw new Error('City name cannot be blank');
 
     const cities = await this.readJson();
     const existing = cities.find(
       (c) => c.name.toLowerCase() === trimmed.toLowerCase()
     );
-    if (existing) {
-      return existing;
-    }
+    if (existing) return existing;
 
     const newCity: City = { name: trimmed, id: uuidv4() };
     await this.writeJson([...cities, newCity]);
     return newCity;
   }
 
-  /**
-   * Remove a city by its ID.
-   */
   async removeCity(id: string): Promise<void> {
     const cities = await this.readJson();
     const filtered = cities.filter((c) => c.id !== id);

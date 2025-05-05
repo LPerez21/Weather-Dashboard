@@ -1,21 +1,35 @@
-import dotenv from 'dotenv';
-import express from 'express';
-dotenv.config();
+// server/src/server.ts
 
-// Import the routes
-import routes from './index.js';
+import 'dotenv/config';               // loads .env
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import routes from './routes/index.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
 
 const app = express();
 
-const PORT = process.env.PORT || 3001;
+// 1) Serve static files from your React build
+const clientDist = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDist));
 
-// TODO: Serve static files of entire client dist folder
-app.use(express.static('../client/dist'));
+// 2) Parse URL‑encoded form data
 app.use(express.urlencoded({ extended: true }));
-// TODO: Implement middleware for parsing JSON and urlencoded form data
+// 3) Parse JSON bodies
 app.use(express.json());
-// TODO: Implement middleware to connect the routes
-app.use(routes);
 
-// Start the server on the port
-app.listen(PORT, () => console.log(`Listening on PORT: ${PORT}`));
+// 4) Mount your combined router (API under /api, HTML fallback)
+/*
+  routes = Router()
+    .use('/api', apiRoutes)
+    .use('/', htmlRoutes)
+*/
+app.use('/', routes);
+
+// 5) Start the server on the configured PORT
+const PORT = Number(process.env.PORT) || 3001;
+app.listen(PORT, () => {
+  console.log(`Listening on port ${PORT}`);
+});
